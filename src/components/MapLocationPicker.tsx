@@ -76,8 +76,9 @@ export default function MapLocationPicker({ initialLat, initialLng, onConfirm, o
   const mapRef           = useRef<google.maps.Map | null>(null);
   const placesServiceRef = useRef<google.maps.places.PlacesService | null>(null);
   const geocoderRef      = useRef<google.maps.Geocoder | null>(null);
-  const resolveDebounceRef = useRef<ReturnType<typeof setTimeout>>();
-  const searchDebounceRef  = useRef<ReturnType<typeof setTimeout>>();
+  const resolveDebounceRef  = useRef<ReturnType<typeof setTimeout>>();
+  const searchDebounceRef   = useRef<ReturnType<typeof setTimeout>>();
+  const lastGeocodedPosRef  = useRef<{ lat: number; lng: number } | null>(null);
 
   // ── Step ─────────────────────────────────────────────────────────────────
   const [step, setStep] = useState<Step>('map');
@@ -186,11 +187,20 @@ export default function MapLocationPicker({ initialLat, initialLng, onConfirm, o
           const lng = c.lng();
           centerLatRef.current = lat;
           centerLngRef.current = lng;
+
+          // Skip geocode if center hasn't moved (idle fired from resize, not user pan)
+          const last = lastGeocodedPosRef.current;
+          if (last && Math.abs(last.lat - lat) < 0.00005 && Math.abs(last.lng - lng) < 0.00005) return;
+
           if (resolveDebounceRef.current) clearTimeout(resolveDebounceRef.current);
-          resolveDebounceRef.current = setTimeout(() => reverseGeocode(lat, lng), 600);
+          resolveDebounceRef.current = setTimeout(() => {
+            lastGeocodedPosRef.current = { lat, lng };
+            reverseGeocode(lat, lng);
+          }, 600);
         });
 
         setMapsLoaded(true);
+        lastGeocodedPosRef.current = { lat: initialLat ?? DEFAULT_LAT, lng: initialLng ?? DEFAULT_LNG };
         reverseGeocode(initialLat ?? DEFAULT_LAT, initialLng ?? DEFAULT_LNG);
       })
       .catch(() => setMapsError(true));
@@ -231,6 +241,7 @@ export default function MapLocationPicker({ initialLat, initialLng, onConfirm, o
   // ── Fly to ───────────────────────────────────────────────────────────────
   function flyTo(lat: number, lng: number) {
     if (!mapRef.current) return;
+    lastGeocodedPosRef.current = null; // force geocode after pan
     mapRef.current.panTo({ lat, lng });
     mapRef.current.setZoom(FLY_ZOOM);
   }
