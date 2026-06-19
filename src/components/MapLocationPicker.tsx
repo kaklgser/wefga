@@ -85,8 +85,9 @@ export default function MapLocationPicker({ initialLat, initialLng, onConfirm, o
   const [mapsError, setMapsError] = useState(false);
 
   // ── Map state ────────────────────────────────────────────────────────────
-  const [centerLat, setCenterLat] = useState(initialLat ?? DEFAULT_LAT);
-  const [centerLng, setCenterLng] = useState(initialLng ?? DEFAULT_LNG);
+  // Refs (not state) — reading at confirm time / location bias; no renders needed
+  const centerLatRef = useRef(initialLat ?? DEFAULT_LAT);
+  const centerLngRef = useRef(initialLng ?? DEFAULT_LNG);
   const [pinManuallyMoved, setPinManuallyMoved] = useState(false);
   const [detectedGpsLat, setDetectedGpsLat] = useState<number | null>(null);
   const [detectedGpsLng, setDetectedGpsLng] = useState<number | null>(null);
@@ -183,8 +184,8 @@ export default function MapLocationPicker({ initialLat, initialLng, onConfirm, o
           if (!c) return;
           const lat = c.lat();
           const lng = c.lng();
-          setCenterLat(lat);
-          setCenterLng(lng);
+          centerLatRef.current = lat;
+          centerLngRef.current = lng;
           if (resolveDebounceRef.current) clearTimeout(resolveDebounceRef.current);
           resolveDebounceRef.current = setTimeout(() => reverseGeocode(lat, lng), 600);
         });
@@ -243,8 +244,8 @@ export default function MapLocationPicker({ initialLat, initialLng, onConfirm, o
         const { latitude: lat, longitude: lng } = pos.coords;
         setDetectedGpsLat(lat);
         setDetectedGpsLng(lng);
-        setCenterLat(lat);
-        setCenterLng(lng);
+        centerLatRef.current = lat;
+        centerLngRef.current = lng;
         flyTo(lat, lng);
         setLocating(false);
       },
@@ -264,7 +265,7 @@ export default function MapLocationPicker({ initialLat, initialLng, onConfirm, o
       {
         input                 : q,
         componentRestrictions : { country: 'IN' },
-        locationBias          : { center: { lat: centerLat, lng: centerLng }, radius: 50000 },
+        locationBias          : { center: { lat: centerLatRef.current, lng: centerLngRef.current }, radius: 50000 },
       },
       (predictions, status) => {
         setSearching(false);
@@ -344,8 +345,8 @@ export default function MapLocationPicker({ initialLat, initialLng, onConfirm, o
     onConfirm({
       address             : parts.join(', '),
       pincode             : finalPincode,
-      lat                 : centerLat,
-      lng                 : centerLng,
+      lat                 : centerLatRef.current,
+      lng                 : centerLngRef.current,
       houseNumber         : houseNumber.trim(),
       buildingName        : buildingName.trim(),
       floorNumber         : floorNumber.trim(),
