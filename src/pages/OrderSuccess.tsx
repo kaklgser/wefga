@@ -7,7 +7,7 @@ import { clearPendingOnlineOrder, readPendingOnlineOrder } from '../lib/pendingO
 import { supabase } from '../lib/supabase';
 import { getPaymentMethodLabel, getPendingPaymentLabel, getReadyOrderLabel, getServiceModeLabel, isAwaitingCounterPayment, isAwaitingOnlinePayment } from '../lib/orderLabels';
 import { fetchAccessibleOrderDetails } from '../lib/orderLookup';
-import { RAZORPAY_BRAND_IMAGE, buildRazorpayCallbackUrl, createExistingRazorpayOrder, loadRazorpayScript, reconcileRazorpayPayment, verifyRazorpayPayment } from '../lib/razorpay';
+import { RAZORPAY_BRAND_IMAGE, buildRazorpayCallbackUrl, cancelRazorpayPayment, createExistingRazorpayOrder, loadRazorpayScript, reconcileRazorpayPayment, verifyRazorpayPayment } from '../lib/razorpay';
 import { getRazorpayPrefillContact } from '../lib/checkoutCustomer';
 import type { Order, MenuItem, OrderStatus } from '../types';
 import { useToast } from '../components/Toast';
@@ -47,6 +47,11 @@ export default function OrderSuccessPage() {
   const [payingOnline, setPayingOnline] = useState(false);
   const [reconcilingPayment, setReconcilingPayment] = useState(false);
   const [paymentCheckDelayed, setPaymentCheckDelayed] = useState(false);
+  const [canCancelOrder, setCanCancelOrder] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancellingOrder, setCancellingOrder] = useState(false);
+  const verifyingStartTimeRef = useRef<number | null>(null);
+  const cancelTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { showToast } = useToast();
   const prevStatusRef = useRef<string | null>(null);
   const pickupAlertPlayedRef = useRef(false);
@@ -442,6 +447,56 @@ export default function OrderSuccessPage() {
     };
   }, [order, showToast]);
 
+  useEffect(() => {
+    if (!order || !isAwaitingOnlinePayment(order)) {
+      if (cancelTimerRef.current) clearTimeout(cancelTimerRef.current);
+      cancelTimerRef.current = null;
+      verifyingStartTimeRef.current = null;
+      setCanCancelOrder(false);
+      setShowCancelConfirm(false);
+      return;
+    }
+
+    if (canCancelOrder) return;
+
+    if (verifyingStartTimeRef.current === null) {
+      verifyingStartTimeRef.current = Date.now();
+    }
+
+    const elapsed = Date.now() - verifyingStartTimeRef.current;
+    const remaining = 120_000 - elapsed;
+
+    if (remaining <= 0) {
+      setCanCancelOrder(true);
+      return;
+    }
+
+    cancelTimerRef.current = setTimeout(() => {
+      setCanCancelOrder(true);
+    }, remaining);
+
+    return () => {
+      if (cancelTimerRef.current) clearTimeout(cancelTimerRef.current);
+    };
+  }, [order, canCancelOrder]);
+
+  async function handleCancelOrder() {
+    if (!order || cancellingOrder) return;
+    setCancellingOrder(true);
+    try {
+      await cancelRazorpayPayment(order.order_id, order.customer_email);
+      clearPendingOnlineOrder(order.order_id);
+      updateGuestOrderSnapshot(order.order_id, { payment_status: 'failed', status: 'cancelled' });
+      setOrder((prev) => prev ? { ...prev, payment_status: 'failed', status: 'cancelled' } : prev);
+      showToast('Order cancelled.');
+    } catch {
+      showToast('Could not cancel order. Please try again.', 'error');
+    } finally {
+      setCancellingOrder(false);
+      setShowCancelConfirm(false);
+    }
+  }
+
   async function copyOrderId() {
     if (!order) return;
     try {
@@ -762,6 +817,44 @@ export default function OrderSuccessPage() {
               >
                 Check Payment Status
               </button>
+            )}
+            {canCancelOrder && !reconcilingPayment && !showCancelConfirm && (
+              <div className="mt-2 mb-8">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex-1 h-px bg-white/10" />
+                  <span className="text-xs text-brand-text-muted">Having trouble?</span>
+                  <div className="flex-1 h-px bg-white/10" />
+                </div>
+                <button
+                  onClick={() => setShowCancelConfirm(true)}
+                  className="w-full py-2.5 px-4 rounded-xl border border-rose-500/40 text-rose-400 text-sm font-medium hover:bg-rose-500/10 transition-colors"
+                >
+                  Cancel this order
+                </button>
+              </div>
+            )}
+            {canCancelOrder && showCancelConfirm && (
+              <div className="mt-2 mb-8 rounded-2xl border border-rose-500/30 bg-rose-500/5 p-4">
+                <p className="text-sm font-semibold text-rose-300 mb-1">Cancel this order?</p>
+                <p className="text-xs text-brand-text-muted mb-4">If your payment went through, you may not receive a refund. Only cancel if you are sure the payment did not complete.</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowCancelConfirm(false)}
+                    disabled={cancellingOrder}
+                    className="flex-1 py-2.5 rounded-xl border border-white/15 text-sm font-medium text-brand-text-muted hover:bg-white/5 transition-colors disabled:opacity-50"
+                  >
+                    Go back
+                  </button>
+                  <button
+                    onClick={() => { void handleCancelOrder(); }}
+                    disabled={cancellingOrder}
+                    className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                  >
+                    {cancellingOrder && <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
+                    {cancellingOrder ? 'Cancelling...' : 'Yes, cancel'}
+                  </button>
+                </div>
+              </div>
             )}
           </motion.div>
         )}
