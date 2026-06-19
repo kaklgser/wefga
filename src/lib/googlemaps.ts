@@ -1,6 +1,5 @@
 import { Loader } from '@googlemaps/js-api-loader';
 
-export const GOOGLE_MAPS_KEY = (import.meta.env.VITE_GOOGLE_MAPS_KEY as string) || '';
 export const STORE_LAT = 16.4724;
 export const STORE_LNG = 80.6516;
 
@@ -24,13 +23,37 @@ export const DARK_MAP_STYLE: google.maps.MapTypeStyle[] = [
   { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#1f2037' }] },
 ];
 
-// Module-level singleton loader — shared across MapLocationPicker and DeliveryDashboard
+// Module-level singletons
+let _keyPromise: Promise<string> | null = null;
 let _loader: Loader | null = null;
 
-export function getGoogleMapsLoader(): Loader {
+async function fetchMapsKey(): Promise<string> {
+  const envKey = (import.meta.env.VITE_GOOGLE_MAPS_KEY as string) || '';
+  if (envKey) return envKey;
+
+  try {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+    const res = await fetch(`${supabaseUrl}/functions/v1/get-maps-key`, {
+      headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` },
+    });
+    if (!res.ok) return '';
+    const data = await res.json() as { key?: string };
+    return data.key ?? '';
+  } catch {
+    return '';
+  }
+}
+
+export function getGoogleMapsKey(): Promise<string> {
+  if (!_keyPromise) _keyPromise = fetchMapsKey();
+  return _keyPromise;
+}
+
+export function getGoogleMapsLoader(apiKey: string): Loader {
   if (!_loader) {
     _loader = new Loader({
-      apiKey: GOOGLE_MAPS_KEY,
+      apiKey,
       version: 'weekly',
       libraries: ['places', 'geometry', 'routes'],
     });

@@ -8,7 +8,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../components/Toast';
-import { getGoogleMapsLoader, STORE_LAT, STORE_LNG, DARK_MAP_STYLE } from '../../lib/googlemaps';
+import { getGoogleMapsKey, getGoogleMapsLoader, STORE_LAT, STORE_LNG, DARK_MAP_STYLE } from '../../lib/googlemaps';
 import type { Order } from '../../types';
 
 interface OrderItemRow {
@@ -83,7 +83,9 @@ function RouteMap({ order }: { order: Order }) {
 
     (async () => {
       try {
-        await getGoogleMapsLoader().load();
+        const key = await getGoogleMapsKey();
+        if (!key) return;
+        await getGoogleMapsLoader(key).load();
         if (cancelled || !mapContainerRef.current) return;
 
         const map = new window.google.maps.Map(mapContainerRef.current, {

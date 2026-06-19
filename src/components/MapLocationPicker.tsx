@@ -5,7 +5,7 @@ import {
   Plus, Minus, Building2, Hash, Landmark, AlertCircle, CheckCircle2,
   ChevronRight, StickyNote,
 } from 'lucide-react';
-import { GOOGLE_MAPS_KEY, DARK_MAP_STYLE, getGoogleMapsLoader } from '../lib/googlemaps';
+import { DARK_MAP_STYLE, getGoogleMapsKey, getGoogleMapsLoader } from '../lib/googlemaps';
 import type { MapConfirmData } from '../types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -150,12 +150,16 @@ export default function MapLocationPicker({ initialLat, initialLng, onConfirm, o
 
   // ── Google Maps init ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (!GOOGLE_MAPS_KEY) { setMapsError(true); return; }
+    let cancelled = false;
 
-    void getGoogleMapsLoader()
-      .load()
-      .then(() => {
-        if (!mapContainerRef.current) return;
+    void getGoogleMapsKey().then((key) => {
+      if (cancelled) return;
+      if (!key) { setMapsError(true); return; }
+
+      void getGoogleMapsLoader(key)
+        .load()
+        .then(() => {
+          if (cancelled || !mapContainerRef.current) return;
 
         const map = new window.google.maps.Map(mapContainerRef.current, {
           center       : { lat: initialLat ?? DEFAULT_LAT, lng: initialLng ?? DEFAULT_LNG },
@@ -188,8 +192,10 @@ export default function MapLocationPicker({ initialLat, initialLng, onConfirm, o
         reverseGeocode(initialLat ?? DEFAULT_LAT, initialLng ?? DEFAULT_LNG);
       })
       .catch(() => setMapsError(true));
+    });
 
     return () => {
+      cancelled = true;
       if (resolveDebounceRef.current) clearTimeout(resolveDebounceRef.current);
       if (searchDebounceRef.current)  clearTimeout(searchDebounceRef.current);
       mapRef.current = null;
@@ -354,7 +360,7 @@ export default function MapLocationPicker({ initialLat, initialLng, onConfirm, o
   if (typeof document === 'undefined') return null;
 
   // ── No API key fallback ───────────────────────────────────────────────────
-  if (!GOOGLE_MAPS_KEY || mapsError) {
+  if (mapsError) {
     return createPortal(
       <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-brand-surface px-6 gap-4">
         <MapPin size={36} className="text-brand-gold" strokeWidth={1.8} />
