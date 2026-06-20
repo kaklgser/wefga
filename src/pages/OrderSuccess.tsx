@@ -1023,6 +1023,37 @@ export default function OrderSuccessPage() {
                   Check Payment Status
                 </button>
               )}
+              {canCancelOrder && !reconcilingPayment && !showCancelConfirm && (
+                <button
+                  onClick={() => setShowCancelConfirm(true)}
+                  className="w-full py-2.5 rounded-xl border border-rose-500/40 text-rose-400 text-[13px] font-medium hover:bg-rose-500/10 transition-colors"
+                >
+                  Cancel this order
+                </button>
+              )}
+              {canCancelOrder && showCancelConfirm && (
+                <div className="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-4">
+                  <p className="text-sm font-semibold text-rose-300 mb-1">Cancel this order?</p>
+                  <p className="text-xs text-brand-text-muted mb-4">If your payment went through, you may not receive a refund. Only cancel if you are sure the payment did not complete.</p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowCancelConfirm(false)}
+                      disabled={cancellingOrder}
+                      className="flex-1 py-2.5 rounded-xl border border-white/15 text-sm font-medium text-brand-text-muted hover:bg-white/5 transition-colors disabled:opacity-50"
+                    >
+                      Go back
+                    </button>
+                    <button
+                      onClick={() => { void handleCancelOrder(); }}
+                      disabled={cancellingOrder}
+                      className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                    >
+                      {cancellingOrder && <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
+                      {cancellingOrder ? 'Cancelling...' : 'Yes, cancel'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
