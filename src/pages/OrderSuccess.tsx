@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { CheckCircle, Clock, Copy, RotateCcw, Store, Truck, ChefHat, Users, Bell, Sparkles, ArrowRight, Star, Wallet, Package, XCircle } from 'lucide-react';
+import { CheckCircle, Clock, Copy, RotateCcw, Store, Truck, ChefHat, Users, Bell, Sparkles, ArrowRight, Star, Wallet, Package, XCircle, Navigation, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clearCheckoutSuccessOrder } from '../lib/checkoutSuccess';
 import { clearPendingOnlineOrder, readPendingOnlineOrder } from '../lib/pendingOnlineOrder';
@@ -899,18 +899,7 @@ export default function OrderSuccessPage() {
 
         {isOutForDelivery && (
           <motion.div key="out-for-delivery" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-              className="w-20 h-20 bg-sky-500/10 border border-sky-500/20 rounded-full flex items-center justify-center mx-auto mb-6"
-            >
-              <Truck size={40} className="text-sky-400" />
-            </motion.div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-white mb-2">Out for Delivery!</h1>
-            <p className="text-brand-text-muted mb-8">
-              Our delivery partner is on the way with your waffles.
-            </p>
+            <DeliveryOnTheWayHero order={order} />
           </motion.div>
         )}
 
@@ -1238,6 +1227,80 @@ function PickupReadyBanner({ order }: { order: Order }) {
   );
 }
 
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function computeDeliveryEtaMin(order: Order): number | null {
+  if (order.delivery_partner_lat == null || order.delivery_partner_lng == null) return null;
+  if (order.delivery_lat == null || order.delivery_lng == null) return null;
+  const km = haversineKm(order.delivery_partner_lat, order.delivery_partner_lng, order.delivery_lat, order.delivery_lng);
+  return Math.max(2, Math.ceil((km / 25) * 60));
+}
+
+function DeliveryOnTheWayHero({ order }: { order: Order }) {
+  const [eta, setEta] = useState<number | null>(() => computeDeliveryEtaMin(order));
+
+  useEffect(() => {
+    setEta(computeDeliveryEtaMin(order));
+  }, [order.delivery_partner_lat, order.delivery_partner_lng]);
+
+  return (
+    <div className="mb-8">
+      {/* Animated scooter icon */}
+      <motion.div
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+        className="w-24 h-24 bg-sky-500/10 border-2 border-sky-500/25 rounded-full flex items-center justify-center mx-auto mb-5"
+      >
+        <span className="text-4xl">🛵</span>
+      </motion.div>
+
+      <h1 className="text-2xl font-extrabold tracking-tight text-white mb-1">Your order is on the way!</h1>
+      <p className="text-brand-text-muted text-[14px] mb-5">
+        Our delivery partner has picked up your waffles and is heading your way.
+      </p>
+
+      {/* ETA card */}
+      <div className="rounded-2xl border border-sky-500/25 bg-sky-500/8 px-5 py-4 flex items-center gap-4 mb-5">
+        <div className="w-12 h-12 rounded-xl bg-sky-500/15 border border-sky-500/20 flex items-center justify-center flex-shrink-0">
+          <Navigation size={22} className="text-sky-400" />
+        </div>
+        <div className="text-left">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-sky-400 mb-0.5">Estimated Arrival</p>
+          {eta !== null ? (
+            <>
+              <p className="text-3xl font-black text-white tabular-nums leading-none">~{eta} min</p>
+              <p className="text-[12px] text-brand-text-dim mt-0.5">Based on partner's current location</p>
+            </>
+          ) : (
+            <>
+              <p className="text-xl font-black text-white leading-none">Arriving soon</p>
+              <p className="text-[12px] text-brand-text-dim mt-0.5">Live ETA will appear when partner location updates</p>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Delivery address */}
+      {order.address && (
+        <div className="flex items-start gap-2 bg-brand-surface rounded-2xl border border-brand-border px-4 py-3">
+          <MapPin size={14} className="text-sky-400 flex-shrink-0 mt-0.5" />
+          <div className="text-left">
+            {order.house_number && <p className="text-[13px] font-semibold text-white">{order.house_number}{order.building_name ? `, ${order.building_name}` : ''}</p>}
+            <p className="text-[12px] text-brand-text-muted">{order.address}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EnjoyFoodCelebration({ isPickup }: { isPickup: boolean }) {
   const [showParticles, setShowParticles] = useState(true);
 
@@ -1271,12 +1334,12 @@ function EnjoyFoodCelebration({ isPickup }: { isPickup: boolean }) {
           <CheckCircle size={48} className="text-brand-gold" />
         </div>
         <h1 className="text-3xl font-black tracking-tight text-white mb-3">
-          {isPickup ? 'Enjoy Your Food!' : 'Order Delivered!'}
+          {isPickup ? 'Enjoy Your Food!' : 'Delivered Successfully!'}
         </h1>
         <p className="text-brand-text-muted text-[15px] mb-2">
           {isPickup
             ? 'Thank you for dining with us. We hope you love every bite!'
-            : 'Your waffles have arrived. Enjoy every bite!'}
+            : 'Your waffles have been delivered. We hope you enjoy every bite!'}
         </p>
         <div className="inline-flex items-center gap-2 mt-2 bg-brand-gold/10 border border-brand-gold/20 rounded-full px-5 py-2 text-brand-gold text-[13px] font-bold">
           <Star size={14} fill="currentColor" />

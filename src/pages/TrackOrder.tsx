@@ -595,7 +595,7 @@ export default function TrackOrderPage() {
                     <CheckCircle size={32} className="text-brand-gold" />
                   </div>
                   <h2 className="mb-2 text-2xl font-black text-white">
-                    {order.order_type === 'pickup' ? 'Enjoy Your Food!' : 'Order Delivered!'}
+                    {order.order_type === 'pickup' ? 'Enjoy Your Food!' : 'Delivered Successfully!'}
                   </h2>
                   <p className="text-[14px] text-brand-text-muted mb-3">
                     {order.order_type === 'pickup'
