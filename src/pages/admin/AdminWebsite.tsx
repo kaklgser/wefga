@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Eye, EyeOff, Mail, Power, Save, Send } from 'lucide-react';
+import { CloudRain, Eye, EyeOff, Mail, Power, Save, Send } from 'lucide-react';
 import SiteClosedOverlay from '../../components/SiteClosedOverlay';
 import { useToast } from '../../components/Toast';
 import { useSiteSettings } from '../../hooks/useSiteSettings';
@@ -12,6 +12,7 @@ interface SiteSettingsForm {
   closure_title: string;
   closure_message: string;
   reopening_text: string;
+  rain_enabled: boolean;
 }
 
 interface SmtpForm {
@@ -29,6 +30,7 @@ function buildForm(settings: SiteSettings | null): SiteSettingsForm {
     closure_title: settings?.closure_title || 'We are currently closed',
     closure_message: settings?.closure_message || 'Ordering is temporarily unavailable right now.',
     reopening_text: settings?.reopening_text || 'We will open at 11:00 AM',
+    rain_enabled: settings?.rain_enabled ?? false,
   };
 }
 
@@ -73,6 +75,7 @@ export default function AdminWebsite() {
       closure_title: form.closure_title.trim() || 'We are currently closed',
       closure_message: form.closure_message.trim() || 'Ordering is temporarily unavailable right now.',
       reopening_text: form.reopening_text.trim() || 'We will open again soon.',
+      rain_enabled: form.rain_enabled,
       updated_at: new Date().toISOString(),
     };
 
@@ -192,6 +195,7 @@ export default function AdminWebsite() {
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_420px] gap-6">
         <div className="bg-brand-surface rounded-xl border border-brand-border p-5 space-y-5">
+          {/* Open / Closed toggle */}
           <div className="flex items-center justify-between gap-4 rounded-xl border border-brand-border bg-brand-bg/40 p-4">
             <div>
               <p className="text-xs uppercase tracking-[0.22em] text-brand-text-dim mb-1">Customer Website</p>
@@ -217,6 +221,36 @@ export default function AdminWebsite() {
             </button>
           </div>
 
+          {/* Rain effect toggle */}
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-brand-border bg-brand-bg/40 p-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${form.rain_enabled ? 'bg-sky-500/15 border border-sky-500/30' : 'bg-brand-surface border border-brand-border'}`}>
+                <CloudRain size={18} className={form.rain_enabled ? 'text-sky-400' : 'text-brand-text-dim'} />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">Falling Rain Effect</p>
+                <p className="text-xs text-brand-text-muted">Animate rain drops across the customer website</p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setForm((current) => ({ ...current, rain_enabled: !current.rain_enabled }))}
+              className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 transition-colors focus:outline-none ${
+                form.rain_enabled ? 'bg-sky-500 border-sky-500' : 'bg-brand-border border-brand-border'
+              }`}
+              role="switch"
+              aria-checked={form.rain_enabled}
+            >
+              <span
+                className={`inline-block h-4 w-4 mt-0.5 rounded-full bg-white shadow transition-transform ${
+                  form.rain_enabled ? 'translate-x-5' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Closure text fields */}
           <div className="space-y-3">
             <div>
               <label className="block text-sm font-semibold text-white mb-2">Overlay Title</label>
@@ -261,9 +295,10 @@ export default function AdminWebsite() {
           </button>
         </div>
 
+        {/* Overlay preview */}
         <div className="bg-brand-surface rounded-xl border border-brand-border p-5">
           <p className="text-xs uppercase tracking-[0.22em] text-brand-text-dim mb-3">Overlay Preview</p>
-          <div className="relative min-h-[520px] rounded-2xl overflow-hidden bg-brand-bg border border-brand-border">
+          <div className="relative min-h-[580px] rounded-2xl overflow-hidden bg-brand-bg border border-brand-border">
             <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,_rgba(216,178,78,0.18),_transparent_55%)]" />
             <div className="absolute inset-0 p-4">
               <div className="h-12 rounded-xl bg-brand-surface border border-brand-border mb-3" />
@@ -284,6 +319,7 @@ export default function AdminWebsite() {
                   closure_title: form.closure_title.trim() || 'We are currently closed',
                   closure_message: form.closure_message.trim() || 'Ordering is temporarily unavailable right now.',
                   reopening_text: form.reopening_text.trim() || 'We will open again soon.',
+                  rain_enabled: form.rain_enabled,
                   created_at: settings?.created_at || defaultOpenSiteSettings.created_at,
                   updated_at: settings?.updated_at || defaultOpenSiteSettings.updated_at,
                 }}
@@ -293,6 +329,7 @@ export default function AdminWebsite() {
         </div>
       </div>
 
+      {/* SMTP section */}
       <div className="mt-8">
         <h1 className="text-2xl font-extrabold text-white">Email Settings (SMTP)</h1>
         <p className="text-sm text-brand-text-dim mt-1">Configure the SMTP server used for sending order receipts and notifications to customers.</p>

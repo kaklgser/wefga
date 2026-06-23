@@ -7,6 +7,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import BottomNav from './components/BottomNav';
 import FloatingCart from './components/FloatingCart';
+import RainEffect from './components/RainEffect';
 import SiteClosedOverlay from './components/SiteClosedOverlay';
 import RouteSeo from './components/RouteSeo';
 import Home from './pages/Home';
@@ -123,6 +124,7 @@ function CustomerAccessGate({ children }: { children: ReactNode }) {
 
   return (
     <>
+      {!loading && settings?.rain_enabled && <RainEffect />}
       {children}
       {!loading && settings && !settings.site_is_open && <SiteClosedOverlay settings={settings} />}
     </>

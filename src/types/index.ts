@@ -78,6 +78,7 @@ export interface SiteSettings {
   closure_title: string;
   closure_message: string;
   reopening_text: string;
+  rain_enabled: boolean;
   smtp_host: string;
   smtp_port: number;
   smtp_user: string;
