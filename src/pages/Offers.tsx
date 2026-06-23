@@ -188,8 +188,27 @@ export default function OffersPage() {
     [menuItems],
   );
 
-  const regularOffers = useMemo(() => offers.filter((o) => !o.delivery_only), [offers]);
-  const deliveryOffers = useMemo(() => offers.filter((o) => o.delivery_only), [offers]);
+  const visibleOffers = useMemo(() => offers.filter((o) => o.show_on_offers_page !== false), [offers]);
+
+  const deliveryOnlyOffers = useMemo(() => visibleOffers.filter((o) =>
+    o.applies_to_delivery !== false && o.applies_to_takeaway === false && o.applies_to_dine_in === false
+  ), [visibleOffers]);
+
+  const takeawayOnlyOffers = useMemo(() => visibleOffers.filter((o) =>
+    o.applies_to_takeaway !== false && o.applies_to_delivery === false && o.applies_to_dine_in === false
+  ), [visibleOffers]);
+
+  const dineInOnlyOffers = useMemo(() => visibleOffers.filter((o) =>
+    o.applies_to_dine_in !== false && o.applies_to_delivery === false && o.applies_to_takeaway === false
+  ), [visibleOffers]);
+
+  const allOrdersOffers = useMemo(() => visibleOffers.filter((o) => {
+    const d = o.applies_to_delivery !== false;
+    const t = o.applies_to_takeaway !== false;
+    const i = o.applies_to_dine_in !== false;
+    const onlyOne = [d, t, i].filter(Boolean).length === 1;
+    return !onlyOne;
+  }), [visibleOffers]);
 
   return (
     <div className="min-h-screen bg-brand-bg pb-20">
@@ -216,24 +235,24 @@ export default function OffersPage() {
       <section className="px-4 pb-5">
         {loading ? (
           <div className="h-[240px] animate-pulse rounded-[24px] border border-brand-border bg-brand-surface sm:h-[268px] lg:h-[308px]" />
-        ) : regularOffers.length > 0 ? (
+        ) : allOrdersOffers.length > 0 ? (
           <OfferCarousel
-            offers={regularOffers}
+            offers={allOrdersOffers}
             categorySlugById={categorySlugById}
             menuItemsById={menuItemsById}
           />
-        ) : offers.length > 0 ? null : (
+        ) : visibleOffers.length > 0 ? null : (
           <div className="rounded-[24px] border border-brand-border bg-brand-surface p-8 text-center text-brand-text-dim">
             No active offers right now.
           </div>
         )}
       </section>
 
-      {offers.length > 0 && (
+      {visibleOffers.length > 0 && (
         <section className="section-padding py-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[
-              { icon: Tag, label: `${offers.length} live offer${offers.length === 1 ? '' : 's'}` },
+              { icon: Tag, label: `${visibleOffers.length} live offer${visibleOffers.length === 1 ? '' : 's'}` },
               { icon: Sparkles, label: 'Auto moving carousel' },
               { icon: ChevronRight, label: 'Manual arrows and dots' },
             ].map((item) => (
@@ -248,34 +267,7 @@ export default function OffersPage() {
         </section>
       )}
 
-      {deliveryOffers.length > 0 && (
-        <section className="section-padding py-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <span className="section-label flex items-center gap-1.5">
-                <Truck size={12} className="text-sky-400" />
-                Delivery
-              </span>
-              <h2 className="mt-2 text-2xl font-black text-white">Delivery offers</h2>
-              <p className="mt-1 text-[13px] text-brand-text-muted">These deals apply to delivery orders.</p>
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-4 lg:grid-cols-2">
-            {deliveryOffers.map((offer, index) => (
-              <OfferCard
-                key={offer.id}
-                offer={offer}
-                index={index}
-                categorySlugById={categorySlugById}
-                menuItemsById={menuItemsById}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {regularOffers.length > 0 && (
+      {allOrdersOffers.length > 0 && (
         <section className="section-padding py-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -291,7 +283,88 @@ export default function OffersPage() {
           </div>
 
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
-            {regularOffers.map((offer, index) => (
+            {allOrdersOffers.map((offer, index) => (
+              <OfferCard
+                key={offer.id}
+                offer={offer}
+                index={index}
+                categorySlugById={categorySlugById}
+                menuItemsById={menuItemsById}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {deliveryOnlyOffers.length > 0 && (
+        <section className="section-padding py-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <span className="section-label flex items-center gap-1.5">
+                <Truck size={12} className="text-sky-400" />
+                Delivery
+              </span>
+              <h2 className="mt-2 text-2xl font-black text-white">Delivery-only offers</h2>
+              <p className="mt-1 text-[13px] text-brand-text-muted">These deals apply to delivery orders only.</p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            {deliveryOnlyOffers.map((offer, index) => (
+              <OfferCard
+                key={offer.id}
+                offer={offer}
+                index={index}
+                categorySlugById={categorySlugById}
+                menuItemsById={menuItemsById}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {takeawayOnlyOffers.length > 0 && (
+        <section className="section-padding py-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <span className="section-label flex items-center gap-1.5">
+                <Truck size={12} className="text-amber-400" />
+                Takeaway
+              </span>
+              <h2 className="mt-2 text-2xl font-black text-white">Takeaway-only offers</h2>
+              <p className="mt-1 text-[13px] text-brand-text-muted">These deals apply to takeaway orders only.</p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            {takeawayOnlyOffers.map((offer, index) => (
+              <OfferCard
+                key={offer.id}
+                offer={offer}
+                index={index}
+                categorySlugById={categorySlugById}
+                menuItemsById={menuItemsById}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {dineInOnlyOffers.length > 0 && (
+        <section className="section-padding py-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <span className="section-label flex items-center gap-1.5">
+                <Sparkles size={12} className="text-emerald-400" />
+                Dine In
+              </span>
+              <h2 className="mt-2 text-2xl font-black text-white">Dine-in offers</h2>
+              <p className="mt-1 text-[13px] text-brand-text-muted">These deals apply to dine-in visits only.</p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            {dineInOnlyOffers.map((offer, index) => (
               <OfferCard
                 key={offer.id}
                 offer={offer}

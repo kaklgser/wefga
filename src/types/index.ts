@@ -118,7 +118,10 @@ export interface Offer {
   reward_menu_item_id?: string | null;
   reward_item_source?: OfferRewardItemSource | null;
   reward_item_quantity?: number | null;
-  delivery_only?: boolean;
+  applies_to_delivery?: boolean;
+  applies_to_takeaway?: boolean;
+  applies_to_dine_in?: boolean;
+  show_on_offers_page?: boolean;
   valid_from: string;
   valid_until: string;
   is_active: boolean;

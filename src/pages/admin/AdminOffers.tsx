@@ -40,7 +40,10 @@ interface OfferForm {
   cta_target_category_id: string;
   cta_target_menu_item_id: string;
   is_cart_eligible: boolean;
-  delivery_only: boolean;
+  applies_to_delivery: boolean;
+  applies_to_takeaway: boolean;
+  applies_to_dine_in: boolean;
+  show_on_offers_page: boolean;
   offer_mode: OfferMode;
   trigger_type: OfferTriggerType;
   discount_type: OfferDiscountType;
@@ -272,7 +275,10 @@ function buildEmptyOffer(): OfferForm {
     cta_target_category_id: '',
     cta_target_menu_item_id: '',
     is_cart_eligible: true,
-    delivery_only: false,
+    applies_to_delivery: true,
+    applies_to_takeaway: true,
+    applies_to_dine_in: true,
+    show_on_offers_page: true,
     offer_mode: 'coupon',
     trigger_type: 'min_order',
     discount_type: 'percentage',
@@ -309,7 +315,10 @@ function mapOfferToForm(offer: Offer): OfferForm {
     cta_target_category_id: offer.cta_target_category_id || '',
     cta_target_menu_item_id: offer.cta_target_menu_item_id || '',
     is_cart_eligible: offer.is_cart_eligible !== false,
-    delivery_only: offer.delivery_only ?? false,
+    applies_to_delivery: offer.applies_to_delivery !== false,
+    applies_to_takeaway: offer.applies_to_takeaway !== false,
+    applies_to_dine_in: offer.applies_to_dine_in !== false,
+    show_on_offers_page: offer.show_on_offers_page !== false,
     offer_mode: getOfferMode(offer),
     trigger_type: getOfferTriggerType(offer),
     discount_type: offer.discount_type,
@@ -344,7 +353,10 @@ function buildPreviewOffer(offer: OfferForm): Offer {
     cta_target_category_id: offer.cta_target_type === 'category' ? offer.cta_target_category_id.trim() || null : null,
     cta_target_menu_item_id: offer.cta_target_type === 'item' ? offer.cta_target_menu_item_id.trim() || null : null,
     is_cart_eligible: isCartEligible,
-    delivery_only: offer.delivery_only,
+    applies_to_delivery: offer.applies_to_delivery,
+    applies_to_takeaway: offer.applies_to_takeaway,
+    applies_to_dine_in: offer.applies_to_dine_in,
+    show_on_offers_page: offer.show_on_offers_page,
     offer_mode: isCartEligible ? offer.offer_mode : 'automatic',
     trigger_type: isCartEligible ? offer.trigger_type : 'min_order',
     discount_type: isCartEligible ? offer.discount_type : 'flat',
@@ -428,6 +440,7 @@ export default function AdminOffers() {
   const [freeItemSchemaAvailable, setFreeItemSchemaAvailable] = useState<boolean | null>(null);
   const [ctaTargetSchemaAvailable, setCtaTargetSchemaAvailable] = useState<boolean | null>(null);
   const [deliveryOnlySchemaAvailable, setDeliveryOnlySchemaAvailable] = useState<boolean | null>(null);
+  const [orderTypeSchemaAvailable, setOrderTypeSchemaAvailable] = useState<boolean | null>(null);
   const [offerImageUploadAvailable, setOfferImageUploadAvailable] = useState<boolean | null>(null);
   const [uploadingBackgroundImage, setUploadingBackgroundImage] = useState(false);
   const backgroundImageInputRef = useRef<HTMLInputElement | null>(null);
@@ -572,12 +585,17 @@ export default function AdminOffers() {
       setDeliveryOnlySchemaAvailable(
         Object.prototype.hasOwnProperty.call(sampleOffer, 'delivery_only'),
       );
+      setOrderTypeSchemaAvailable(
+        ['applies_to_delivery', 'applies_to_takeaway', 'applies_to_dine_in', 'show_on_offers_page']
+          .every((column) => Object.prototype.hasOwnProperty.call(sampleOffer, column)),
+      );
     } else {
       setDisplaySchemaAvailable(null);
       setRulesSchemaAvailable(null);
       setFreeItemSchemaAvailable(null);
       setCtaTargetSchemaAvailable(null);
       setDeliveryOnlySchemaAvailable(null);
+      setOrderTypeSchemaAvailable(null);
     }
 
     setLoading(false);
@@ -673,8 +691,16 @@ export default function AdminOffers() {
 
     const resolvedOfferMode: OfferMode = editing.is_cart_eligible ? editing.offer_mode : 'automatic';
     const resolvedTriggerType: OfferTriggerType = editing.is_cart_eligible ? editing.trigger_type : 'min_order';
-    const deliveryOnlyField = deliveryOnlySchemaAvailable !== false
-      ? { delivery_only: editing.delivery_only }
+    const deliveryOnlyField = deliveryOnlySchemaAvailable !== false && !orderTypeSchemaAvailable
+      ? { delivery_only: !editing.applies_to_takeaway && !editing.applies_to_dine_in && editing.applies_to_delivery }
+      : {};
+    const orderTypeField = orderTypeSchemaAvailable !== false
+      ? {
+          applies_to_delivery: editing.applies_to_delivery,
+          applies_to_takeaway: editing.applies_to_takeaway,
+          applies_to_dine_in: editing.applies_to_dine_in,
+          show_on_offers_page: editing.show_on_offers_page,
+        }
       : {};
 
     const legacyPayload = {
@@ -690,6 +716,7 @@ export default function AdminOffers() {
       valid_until: validUntil,
       is_active: editing.is_active,
       ...deliveryOnlyField,
+      ...orderTypeField,
     };
 
     const rulesPayload = {
@@ -1032,9 +1059,18 @@ export default function AdminOffers() {
                 <div className="relative">
                   {offer ? (
                     <>
-                      {offer.delivery_only && (
-                        <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-sky-400">Delivery</p>
-                      )}
+                      {(() => {
+                        const types: string[] = [];
+                        if (offer.applies_to_delivery !== false) types.push('Delivery');
+                        if (offer.applies_to_takeaway !== false) types.push('Takeaway');
+                        if (offer.applies_to_dine_in !== false) types.push('Dine In');
+                        if (types.length === 3) return null;
+                        return (
+                          <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-sky-400">
+                            {types.length === 0 ? 'No order type' : types.join(' + ')}
+                          </p>
+                        );
+                      })()}
                       {offer.title ? (
                         <p className="mt-1 text-sm font-bold text-white">{offer.title}</p>
                       ) : (
@@ -1143,15 +1179,47 @@ export default function AdminOffers() {
               Affects cart pricing and coupons
             </label>
 
-            <label className="flex items-center gap-2 rounded-xl border border-brand-border bg-brand-bg/30 px-3 text-sm text-brand-text-muted">
-              <input
-                type="checkbox"
-                checked={editing.delivery_only}
-                onChange={(e) => setEditing({ ...editing, delivery_only: e.target.checked })}
-                className="rounded"
-              />
-              Delivery Only Offer
-            </label>
+            <div className="sm:col-span-2 rounded-xl border border-brand-border bg-brand-bg/20 p-3 space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-text-dim">Applies to order types</p>
+              <div className="flex flex-wrap gap-3">
+                <label className="flex items-center gap-2 text-sm text-brand-text-muted">
+                  <input
+                    type="checkbox"
+                    checked={editing.applies_to_delivery}
+                    onChange={(e) => setEditing({ ...editing, applies_to_delivery: e.target.checked })}
+                    className="rounded"
+                  />
+                  Delivery
+                </label>
+                <label className="flex items-center gap-2 text-sm text-brand-text-muted">
+                  <input
+                    type="checkbox"
+                    checked={editing.applies_to_takeaway}
+                    onChange={(e) => setEditing({ ...editing, applies_to_takeaway: e.target.checked })}
+                    className="rounded"
+                  />
+                  Takeaway
+                </label>
+                <label className="flex items-center gap-2 text-sm text-brand-text-muted">
+                  <input
+                    type="checkbox"
+                    checked={editing.applies_to_dine_in}
+                    onChange={(e) => setEditing({ ...editing, applies_to_dine_in: e.target.checked })}
+                    className="rounded"
+                  />
+                  Dine In
+                </label>
+              </div>
+              <label className="flex items-center gap-2 text-sm text-brand-text-muted pt-1 border-t border-brand-border/50">
+                <input
+                  type="checkbox"
+                  checked={editing.show_on_offers_page}
+                  onChange={(e) => setEditing({ ...editing, show_on_offers_page: e.target.checked })}
+                  className="rounded"
+                />
+                Show card on Offers page
+              </label>
+            </div>
 
             <input
               placeholder="Top Badge (optional)"
@@ -1594,8 +1662,21 @@ export default function AdminOffers() {
                       ? (getOfferMode(previewOffer) === 'automatic' ? 'Auto applied' : 'Coupon')
                       : 'Display only'}
                   </span>
-                  {previewOffer.delivery_only && (
-                    <span className="text-[11px] font-bold text-sky-400">Delivery only</span>
+                  {(() => {
+                    const types: string[] = [];
+                    if (previewOffer.applies_to_delivery !== false) types.push('Delivery');
+                    if (previewOffer.applies_to_takeaway !== false) types.push('Takeaway');
+                    if (previewOffer.applies_to_dine_in !== false) types.push('Dine In');
+                    if (types.length === 3) return null;
+                    if (types.length === 0) return (
+                      <span className="text-[11px] font-bold text-red-400">No order types</span>
+                    );
+                    return (
+                      <span className="text-[11px] font-bold text-sky-400">{types.join(' + ')} only</span>
+                    );
+                  })()}
+                  {previewOffer.show_on_offers_page === false && (
+                    <span className="text-[11px] font-semibold text-brand-text-dim">Hidden from Offers page</span>
                   )}
                 </div>
                 {previewOffer.title ? (
@@ -1678,10 +1759,21 @@ export default function AdminOffers() {
                         ? (getOfferMode(offer) === 'automatic' ? 'Auto applied' : 'Coupon')
                         : 'Display only'}
                     </span>
-                    {offer.delivery_only && (
-                      <span className="rounded bg-sky-500/15 px-2 py-0.5 text-xs font-semibold text-sky-400">
-                        Delivery
-                      </span>
+                    {(() => {
+                      const types: string[] = [];
+                      if (offer.applies_to_delivery !== false) types.push('Delivery');
+                      if (offer.applies_to_takeaway !== false) types.push('Takeaway');
+                      if (offer.applies_to_dine_in !== false) types.push('Dine In');
+                      if (types.length === 3) return null;
+                      if (types.length === 0) return (
+                        <span className="rounded bg-red-500/15 px-2 py-0.5 text-xs font-semibold text-red-400">No order type</span>
+                      );
+                      return types.map((t) => (
+                        <span key={t} className="rounded bg-sky-500/15 px-2 py-0.5 text-xs font-semibold text-sky-400">{t}</span>
+                      ));
+                    })()}
+                    {offer.show_on_offers_page === false && (
+                      <span className="rounded bg-brand-surface-light px-2 py-0.5 text-xs font-semibold text-brand-text-dim">Hidden</span>
                     )}
                     {carouselPosition >= 0 && (
                       <span className="rounded bg-brand-gold/15 px-2 py-0.5 text-xs font-semibold text-brand-gold">

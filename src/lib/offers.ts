@@ -16,6 +16,8 @@ export interface OfferPricingContext {
   items?: CartItem[];
   menuItemsById?: Record<string, Pick<MenuItem, 'id' | 'name' | 'image_url' | 'price' | 'category_id'>>;
   categoryNamesById?: Record<string, string>;
+  orderType?: 'delivery' | 'pickup';
+  pickupOption?: 'dine_in' | 'takeaway';
 }
 
 export interface AutomaticOfferResult {
@@ -405,6 +407,36 @@ export function getOfferRewardItems(offer: Offer, context: OfferPricingContext):
   }];
 }
 
+export function isOfferApplicableToOrderType(offer: Offer, context: OfferPricingContext): boolean {
+  if (context.orderType === undefined) return true;
+
+  if (context.orderType === 'delivery') {
+    return offer.applies_to_delivery !== false;
+  }
+
+  if (context.pickupOption === 'takeaway') {
+    return offer.applies_to_takeaway !== false;
+  }
+
+  if (context.pickupOption === 'dine_in') {
+    return offer.applies_to_dine_in !== false;
+  }
+
+  return true;
+}
+
+export function getOfferOrderTypeError(offer: Offer, context: OfferPricingContext): string | null {
+  if (isOfferApplicableToOrderType(offer, context)) return null;
+
+  const applicable: string[] = [];
+  if (offer.applies_to_delivery !== false) applicable.push('delivery');
+  if (offer.applies_to_takeaway !== false) applicable.push('takeaway');
+  if (offer.applies_to_dine_in !== false) applicable.push('dine in');
+
+  if (applicable.length === 0) return 'This offer is not available for any order type';
+  return `This offer is only available for ${applicable.join(' and ')} orders`;
+}
+
 export function getOfferDiscountAmount(offer: Offer, context: OfferPricingContext) {
   if (getOfferEligibilityError(offer, context)) {
     return 0;
@@ -438,6 +470,7 @@ export function getBestAutomaticOffer(offers: Offer[], context: OfferPricingCont
 export function getApplicableAutomaticOffers(offers: Offer[], context: OfferPricingContext): AutomaticOfferResult[] {
   return offers
     .filter((offer) => getOfferMode(offer) === 'automatic')
+    .filter((offer) => isOfferApplicableToOrderType(offer, context))
     .map((offer) => ({
       offer,
       discountAmount: getOfferDiscountAmount(offer, context),

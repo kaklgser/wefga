@@ -13,8 +13,10 @@ import {
   getOfferDiscountAmount,
   getOfferEligibilityError,
   getOfferMode,
+  getOfferOrderTypeError,
   getOfferRewardItems,
   getOfferRuleSummary,
+  isOfferApplicableToOrderType,
   isOfferCartEligible,
   type OfferRewardItem,
 } from '../lib/offers';
@@ -464,10 +466,19 @@ export default function CartPage() {
       items,
       menuItemsById: offerMenuItemsById,
       categoryNamesById: offerCategoryNamesById,
+      orderType: activeOrderType,
+      pickupOption,
     });
 
     if (offerEligibilityError) {
       setCouponError(offerEligibilityError);
+      setAppliedOffer(null);
+      return;
+    }
+
+    const offerOrderTypeError = getOfferOrderTypeError(matchingOffer, { subtotal, itemCount, addOnTotal: 0, orderType: activeOrderType, pickupOption });
+    if (offerOrderTypeError) {
+      setCouponError(offerOrderTypeError);
       setAppliedOffer(null);
       return;
     }
@@ -484,6 +495,8 @@ export default function CartPage() {
     items,
     menuItemsById: offerMenuItemsById,
     categoryNamesById: offerCategoryNamesById,
+    orderType: activeOrderType,
+    pickupOption,
   };
   const couponRewardItems = appliedOffer ? getOfferRewardItems(appliedOffer, pricingContext) : [];
   const couponDiscount = appliedOffer ? getOfferDiscountAmount(appliedOffer, pricingContext) : 0;
@@ -518,7 +531,7 @@ export default function CartPage() {
       customizations: [] as SelectedCustomization[],
     })),
   ];
-  const featuredAutomaticOffer = selectedAutomaticOffer?.offer || applicableAutomaticOffers[0]?.offer || activeOffers.find((offer) => getOfferMode(offer) === 'automatic') || null;
+  const featuredAutomaticOffer = selectedAutomaticOffer?.offer || applicableAutomaticOffers[0]?.offer || activeOffers.find((offer) => getOfferMode(offer) === 'automatic' && isOfferApplicableToOrderType(offer, pricingContext)) || null;
   const discount = Math.min(subtotal, couponDiscount + automaticDiscount + reviewRewardDiscount);
   const deliveryFee = activeOrderType === 'delivery'
     ? (subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : getDistanceBasedDeliveryFee(deliveryLat, deliveryLng))
@@ -589,25 +602,36 @@ export default function CartPage() {
     if (!appliedOffer) return;
 
     const latestOffer = activeOffers.find((offer) => offer.id === appliedOffer.id) || appliedOffer;
-    const offerEligibilityError = getOfferEligibilityError(latestOffer, {
+    const revalidationContext = {
       subtotal,
       itemCount,
       addOnTotal,
       items,
       menuItemsById: offerMenuItemsById,
       categoryNamesById: offerCategoryNamesById,
-    });
+      orderType: activeOrderType,
+      pickupOption,
+    };
+
+    const orderTypeError = getOfferOrderTypeError(latestOffer, revalidationContext);
+    if (orderTypeError) {
+      setAppliedOffer(null);
+      setCouponError(orderTypeError);
+      return;
+    }
+
+    const offerEligibilityError = getOfferEligibilityError(latestOffer, revalidationContext);
 
     if (offerEligibilityError) {
       setAppliedOffer(null);
-      setCouponError(`${latestOffer.title} is no longer eligible for this cart`);
+      setCouponError(`${latestOffer.title || 'This offer'} is no longer eligible for this cart`);
       return;
     }
 
     if (latestOffer !== appliedOffer) {
       setAppliedOffer(latestOffer);
     }
-  }, [activeOffers, addOnTotal, appliedOffer, itemCount, items, offerCategoryNamesById, offerMenuItemsById, subtotal]);
+  }, [activeOffers, activeOrderType, addOnTotal, appliedOffer, itemCount, items, offerCategoryNamesById, offerMenuItemsById, pickupOption, subtotal]);
 
   useEffect(() => {
     if (!menuCatalogLoaded || items.length === 0) {
