@@ -44,6 +44,7 @@ interface OfferForm {
   applies_to_takeaway: boolean;
   applies_to_dine_in: boolean;
   show_on_offers_page: boolean;
+  hide_text_overlay: boolean;
   offer_mode: OfferMode;
   trigger_type: OfferTriggerType;
   discount_type: OfferDiscountType;
@@ -279,6 +280,7 @@ function buildEmptyOffer(): OfferForm {
     applies_to_takeaway: true,
     applies_to_dine_in: true,
     show_on_offers_page: true,
+    hide_text_overlay: false,
     offer_mode: 'coupon',
     trigger_type: 'min_order',
     discount_type: 'percentage',
@@ -319,6 +321,7 @@ function mapOfferToForm(offer: Offer): OfferForm {
     applies_to_takeaway: offer.applies_to_takeaway !== false,
     applies_to_dine_in: offer.applies_to_dine_in !== false,
     show_on_offers_page: offer.show_on_offers_page !== false,
+    hide_text_overlay: offer.hide_text_overlay === true,
     offer_mode: getOfferMode(offer),
     trigger_type: getOfferTriggerType(offer),
     discount_type: offer.discount_type,
@@ -357,6 +360,7 @@ function buildPreviewOffer(offer: OfferForm): Offer {
     applies_to_takeaway: offer.applies_to_takeaway,
     applies_to_dine_in: offer.applies_to_dine_in,
     show_on_offers_page: offer.show_on_offers_page,
+    hide_text_overlay: offer.hide_text_overlay,
     offer_mode: isCartEligible ? offer.offer_mode : 'automatic',
     trigger_type: isCartEligible ? offer.trigger_type : 'min_order',
     discount_type: isCartEligible ? offer.discount_type : 'flat',
@@ -586,7 +590,7 @@ export default function AdminOffers() {
         Object.prototype.hasOwnProperty.call(sampleOffer, 'delivery_only'),
       );
       setOrderTypeSchemaAvailable(
-        ['applies_to_delivery', 'applies_to_takeaway', 'applies_to_dine_in', 'show_on_offers_page']
+        ['applies_to_delivery', 'applies_to_takeaway', 'applies_to_dine_in', 'show_on_offers_page', 'hide_text_overlay']
           .every((column) => Object.prototype.hasOwnProperty.call(sampleOffer, column)),
       );
     } else {
@@ -700,6 +704,7 @@ export default function AdminOffers() {
           applies_to_takeaway: editing.applies_to_takeaway,
           applies_to_dine_in: editing.applies_to_dine_in,
           show_on_offers_page: editing.show_on_offers_page,
+          hide_text_overlay: editing.hide_text_overlay,
         }
       : {};
 
@@ -1219,6 +1224,15 @@ export default function AdminOffers() {
                 />
                 Show card on Offers page
               </label>
+              <label className="flex items-center gap-2 text-sm text-brand-text-muted">
+                <input
+                  type="checkbox"
+                  checked={editing.hide_text_overlay}
+                  onChange={(e) => setEditing({ ...editing, hide_text_overlay: e.target.checked })}
+                  className="rounded"
+                />
+                Hide all text on banner image (poster-only mode)
+              </label>
             </div>
 
             <input
@@ -1678,6 +1692,9 @@ export default function AdminOffers() {
                   {previewOffer.show_on_offers_page === false && (
                     <span className="text-[11px] font-semibold text-brand-text-dim">Hidden from Offers page</span>
                   )}
+                  {previewOffer.hide_text_overlay && (
+                    <span className="text-[11px] font-bold text-amber-400">Text hidden on image</span>
+                  )}
                 </div>
                 {previewOffer.title ? (
                   <p className="relative mt-2 text-sm font-bold text-white">{previewOffer.title}</p>
@@ -1774,6 +1791,9 @@ export default function AdminOffers() {
                     })()}
                     {offer.show_on_offers_page === false && (
                       <span className="rounded bg-brand-surface-light px-2 py-0.5 text-xs font-semibold text-brand-text-dim">Hidden</span>
+                    )}
+                    {offer.hide_text_overlay && (
+                      <span className="rounded bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-400">Poster</span>
                     )}
                     {carouselPosition >= 0 && (
                       <span className="rounded bg-brand-gold/15 px-2 py-0.5 text-xs font-semibold text-brand-gold">

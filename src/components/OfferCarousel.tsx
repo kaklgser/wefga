@@ -90,8 +90,8 @@ export default function OfferCarousel({
     ? requestedBannerBackgroundImage
     : null;
 
-  // Poster mode: no text overlay when admin left all text fields blank
-  const hasBannerText = !!(
+  // Poster mode: no text overlay when admin checked hide_text_overlay or left all text fields blank
+  const hasBannerText = !activeOffer.hide_text_overlay && !!(
     activeOffer.title?.trim() ||
     activeOffer.display_badge?.trim() ||
     activeBannerDescription ||

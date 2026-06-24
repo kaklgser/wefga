@@ -122,6 +122,7 @@ export interface Offer {
   applies_to_takeaway?: boolean;
   applies_to_dine_in?: boolean;
   show_on_offers_page?: boolean;
+  hide_text_overlay?: boolean;
   valid_from: string;
   valid_until: string;
   is_active: boolean;

@@ -29,11 +29,13 @@ function OfferCard({
   const ctaHref = getOfferCtaHref(offer, { categorySlugById, menuItemsById });
   const backgroundImage = normalizeImageUrl(offer.background_image_url);
 
-  const isPosterMode = !offer.title?.trim()
+  const isPosterMode = offer.hide_text_overlay === true || (
+    !offer.title?.trim()
     && !offer.display_badge?.trim()
     && !offer.cta_text?.trim()
     && !description
-    && !reward;
+    && !reward
+  );
 
   if (isPosterMode && backgroundImage) {
     return (
