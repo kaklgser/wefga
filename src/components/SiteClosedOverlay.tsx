@@ -21,8 +21,8 @@ export default function SiteClosedOverlay({
 
   return (
     <div className={`${contained ? 'absolute' : 'fixed'} inset-0 z-[80] bg-brand-overlay/95 backdrop-blur-md flex flex-col`}>
-      {/* Atmospheric rain inside overlay */}
-      <RainEffect contained />
+      {/* Atmospheric rain inside overlay — respects rain_enabled setting */}
+      {settings.rain_enabled && <RainEffect contained />}
 
       {/* Top announcement banner */}
       <div className="relative z-10 w-full bg-red-950/80 border-b border-red-500/30 px-4 py-3 text-center shrink-0">

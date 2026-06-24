@@ -45,6 +45,7 @@ interface OfferForm {
   applies_to_dine_in: boolean;
   show_on_offers_page: boolean;
   hide_text_overlay: boolean;
+  first_n_orders: string;
   offer_mode: OfferMode;
   trigger_type: OfferTriggerType;
   discount_type: OfferDiscountType;
@@ -281,7 +282,7 @@ function buildEmptyOffer(): OfferForm {
     applies_to_dine_in: true,
     show_on_offers_page: true,
     hide_text_overlay: false,
-    offer_mode: 'coupon',
+    first_n_orders: '',
     trigger_type: 'min_order',
     discount_type: 'percentage',
     discount_value: '10',
@@ -322,7 +323,7 @@ function mapOfferToForm(offer: Offer): OfferForm {
     applies_to_dine_in: offer.applies_to_dine_in !== false,
     show_on_offers_page: offer.show_on_offers_page !== false,
     hide_text_overlay: offer.hide_text_overlay === true,
-    offer_mode: getOfferMode(offer),
+    first_n_orders: offer.first_n_orders ? String(offer.first_n_orders) : '',
     trigger_type: getOfferTriggerType(offer),
     discount_type: offer.discount_type,
     discount_value: String(offer.discount_value),
@@ -361,6 +362,7 @@ function buildPreviewOffer(offer: OfferForm): Offer {
     applies_to_dine_in: offer.applies_to_dine_in,
     show_on_offers_page: offer.show_on_offers_page,
     hide_text_overlay: offer.hide_text_overlay,
+    first_n_orders: offer.first_n_orders ? parseInt(offer.first_n_orders, 10) || null : null,
     offer_mode: isCartEligible ? offer.offer_mode : 'automatic',
     trigger_type: isCartEligible ? offer.trigger_type : 'min_order',
     discount_type: isCartEligible ? offer.discount_type : 'flat',
@@ -789,6 +791,9 @@ export default function AdminOffers() {
         : null,
       cta_target_menu_item_id: editing.cta_target_type === 'item'
         ? editing.cta_target_menu_item_id || null
+        : null,
+      first_n_orders: editing.first_n_orders.trim()
+        ? Math.max(1, parseInt(editing.first_n_orders, 10) || 1)
         : null,
     };
 
@@ -1233,6 +1238,23 @@ export default function AdminOffers() {
                 />
                 Hide all text on banner image (poster-only mode)
               </label>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold uppercase tracking-wide text-brand-text-dim">
+                First-Order Restriction (optional)
+              </label>
+              <input
+                type="number"
+                min="1"
+                placeholder="Leave blank = all orders"
+                value={editing.first_n_orders}
+                onChange={(e) => setEditing({ ...editing, first_n_orders: e.target.value })}
+                className="input-field"
+              />
+              <p className="text-[11px] text-brand-text-dim">
+                Enter 1 to limit this offer to a customer's first order only. Enter 2 for their first two orders, etc.
+              </p>
             </div>
 
             <input
@@ -1794,6 +1816,11 @@ export default function AdminOffers() {
                     )}
                     {offer.hide_text_overlay && (
                       <span className="rounded bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-400">Poster</span>
+                    )}
+                    {offer.first_n_orders && offer.first_n_orders > 0 && (
+                      <span className="rounded bg-purple-500/15 px-2 py-0.5 text-xs font-semibold text-purple-400">
+                        First {offer.first_n_orders === 1 ? 'order' : `${offer.first_n_orders} orders`}
+                      </span>
                     )}
                     {carouselPosition >= 0 && (
                       <span className="rounded bg-brand-gold/15 px-2 py-0.5 text-xs font-semibold text-brand-gold">

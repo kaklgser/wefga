@@ -232,6 +232,7 @@ export default function CartPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
   const [checkoutStep, setCheckoutStep] = useState<CheckoutStep | null>(null);
   const [activeOffers, setActiveOffers] = useState<Offer[]>([]);
+  const [userOrderCount, setUserOrderCount] = useState<number | undefined>(undefined);
   const [couponCode, setCouponCode] = useState('');
   const [appliedOffer, setAppliedOffer] = useState<Offer | null>(null);
   const [selectedAutomaticOfferId, setSelectedAutomaticOfferId] = useState<string | null>(null);
@@ -374,6 +375,22 @@ export default function CartPage() {
   }, [user]);
 
   useEffect(() => {
+    if (!user) {
+      setUserOrderCount(undefined);
+      return;
+    }
+
+    void (async () => {
+      const { count } = await customerSupabase
+        .from('orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .not('status', 'in', '("cancelled","expired")');
+      setUserOrderCount(count ?? 0);
+    })();
+  }, [user]);
+
+  useEffect(() => {
     if (!activeCheckoutOrderId) return;
     navigate(`/order-success/${activeCheckoutOrderId}`, { replace: true });
   }, [activeCheckoutOrderId, navigate]);
@@ -461,6 +478,7 @@ export default function CartPage() {
       categoryNamesById: offerCategoryNamesById,
       orderType: activeOrderType,
       pickupOption,
+      userOrderCount,
     });
 
     if (offerEligibilityError) {
@@ -490,6 +508,7 @@ export default function CartPage() {
     categoryNamesById: offerCategoryNamesById,
     orderType: activeOrderType,
     pickupOption,
+    userOrderCount,
   };
   const couponRewardItems = appliedOffer ? getOfferRewardItems(appliedOffer, pricingContext) : [];
   const couponDiscount = appliedOffer ? getOfferDiscountAmount(appliedOffer, pricingContext) : 0;
@@ -604,6 +623,7 @@ export default function CartPage() {
       categoryNamesById: offerCategoryNamesById,
       orderType: activeOrderType,
       pickupOption,
+      userOrderCount,
     };
 
     const orderTypeError = getOfferOrderTypeError(latestOffer, revalidationContext);

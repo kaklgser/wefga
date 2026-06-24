@@ -18,6 +18,7 @@ export interface OfferPricingContext {
   categoryNamesById?: Record<string, string>;
   orderType?: 'delivery' | 'pickup';
   pickupOption?: 'dine_in' | 'takeaway';
+  userOrderCount?: number;
 }
 
 export interface AutomaticOfferResult {
@@ -292,7 +293,22 @@ export function getOfferRuleSummary(offer: Offer) {
     : `${rewardLabel} on orders above ₹${formatNumber(minimumOrder)}`;
 }
 
+export function getOfferFirstNOrdersError(offer: Offer, context: OfferPricingContext): string | null {
+  const limit = offer.first_n_orders ?? null;
+  if (limit === null || limit <= 0) return null;
+  if (context.userOrderCount === undefined) return null;
+  if (context.userOrderCount >= limit) {
+    return limit === 1
+      ? 'This offer is only valid on your first order'
+      : `This offer is only valid on your first ${limit} orders`;
+  }
+  return null;
+}
+
 export function getOfferEligibilityError(offer: Offer, context: OfferPricingContext) {
+  const firstNError = getOfferFirstNOrdersError(offer, context);
+  if (firstNError) return firstNError;
+
   if (getOfferTriggerType(offer) === 'item_quantity') {
     const requiredQuantity = getRequiredItemQuantity(offer) || 1;
     const qualifyingCount = getOfferItemCount(offer, context);
